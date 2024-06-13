@@ -22,3 +22,5 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 rustflags = ["-C", "link-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld"]
 
 [dependencies]
+actix-web = "4"
+tokio = { version = "1.38.0", features = ["full"] }
