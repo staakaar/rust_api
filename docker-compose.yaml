@@ -1,13 +1,18 @@
 version: "3"
+
+volumes:
+  postgres_data:
+    driver: local
 services:
   db:
-    image: postgres:13.3
+    image: postgres@13
+    container_name: postgres
     environment:
+      POSTGRES_DB: newsletter
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
       - 5432:5432
     volumes:
-      - postgres:/var/lib/postgresql
-volumes:
-  postgres:
+      - postgres_data://usr/local/bin/postgres
+    hostname: postgres
