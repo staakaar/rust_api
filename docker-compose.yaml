@@ -5,14 +5,14 @@ volumes:
     driver: local
 services:
   db:
-    image: postgres@13
-    container_name: postgres
+    image: postgres:13
+    container_name: postgres_rust
     environment:
       POSTGRES_DB: newsletter
-      POSTGRES_USER: postgres
+      POSTGRES_USER: iwamototakayuki
       POSTGRES_PASSWORD: password
     ports:
-      - 5432:5432
+      - 5433:5432
     volumes:
-      - postgres_data://usr/local/bin/postgres
+      - postgres_data:/usr/local/bin/postgres
     hostname: postgres
