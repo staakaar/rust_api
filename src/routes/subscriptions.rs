@@ -32,8 +32,8 @@ pub async fn subscribe(form: web::Form<FormData>, pool: web::Data<PgPool>) -> Ht
         return HttpResponse::BadRequest().finish();
     }
 
-    let new_subscriber = match parse_subscriber(form.0) {
-        Ok(subscriber) => subscriber,
+    let new_subscriber = match form.0.try_into() {
+        Ok(form) => form,
         Err(_) => return HttpResponse::BadRequest().finish(),
     };
 
@@ -76,4 +76,14 @@ pub fn is_valid_name(s: &str) -> bool {
     let contains_forbidden_characters = s.chars().any(|c| forbidden_characters.contains(&c));
 
     !(is_empty_or_whitespace || is_too_long || contains_forbidden_characters)
+}
+
+impl TryFrom<FormData> for NewSubscriber {
+    type Error = String;
+
+    fn try_from(value: FormData) -> Result<Self, Self::Error> {
+        let name = SubscriberName::parse(value.name)?;
+        let email = SubscriberEmail::parse(value.email)?;
+        Ok(Self { email, name })
+    }
 }
