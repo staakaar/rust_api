@@ -1,9 +1,9 @@
 use env_logger::Env;
+use rust_api::email_client::{self, EmailClient};
 use rust_api::startup::run;
 use rust_api::telemetry::init_subscriber;
 use rust_api::{configuration::get_configuration, telemetry::get_subscriber};
-use secrecy::ExposeSecret;
-use sqlx::PgPool;
+use sqlx::postgres::PgPoolOptions;
 use std::net::TcpListener;
 use tracing_log::LogTracer;
 
@@ -17,15 +17,26 @@ async fn main() -> Result<(), std::io::Error> {
     init_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration.");
-    // let connnection = PgPool::connect(&configuration.database.connection_string().expose_secret())
-    //     .await
-    //     .expect("Failed to connect to Postges.");
 
+    // let connection_pool =
+    //     PgPool::connect_lazy(&configuration.database.connection_string().expose_secret())
+    //         .expect("Failed to create Postgres connection pool.");
     let connection_pool =
-        PgPool::connect_lazy(&configuration.database.connection_string().expose_secret())
-            .expect("Failed to create Postgres connection pool.");
-    let address = format!("127.0.0.1:{}", configuration.application_port);
+        PgPoolOptions::new().connect_lazy_with(configuration.database.without_db());
+
+    // EmailClient
+    let sender_email = configuration
+        .email_client
+        .sender()
+        .expect("Invalid sender email address.");
+    let email_client = EmailClient::new(configuration.email_client.base_url, sender_email);
+
+    let address = format!(
+        "{}:{}",
+        configuration.application.host, configuration.application.port
+    );
     let listener = TcpListener::bind(address)?;
 
-    run(listener, connection_pool)?.await
+    run(listener, connection_pool, email_client)?.await?;
+    Ok(())
 }
