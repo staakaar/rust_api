@@ -1,5 +1,5 @@
 use env_logger::Env;
-use rust_api::startup::build;
+use rust_api::startup::Application;
 use rust_api::telemetry::init_subscriber;
 use rust_api::{configuration::get_configuration, telemetry::get_subscriber};
 use tracing_log::LogTracer;
@@ -15,7 +15,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let configuration = get_configuration().expect("Failed to read configuration.");
 
-    let server = build(configuration).await?;
-    server.await?;
+    let application = Application::build(configuration).await?;
+    application.run_until_stopped().await?;
     Ok(())
 }
