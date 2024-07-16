@@ -47,6 +47,7 @@ serde-aux = "4"
 unicode-segmentation = "1"
 claims = "0.7"
 validator = "0.16"
+rand = "0.8"
 
 [dependencies.reqwest]
 version = "0.11"
