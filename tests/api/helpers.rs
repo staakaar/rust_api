@@ -43,6 +43,16 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
+    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+        reqwest::Client::new()
+            .post(&format!("{}/newsletters", &self.address))
+            .basic_auth(Uuid::new_v4().to_string(), Some(Uuid::new_v4().to_string()))
+            .json(&body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
     pub fn get_confirmation_links(&self, email_request: &wiremock::Request) -> ConfirmationLinks {
         let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
 
@@ -63,6 +73,14 @@ impl TestApp {
         let plain_text = get_link(&body["TextBody"].as_str().unwrap());
 
         ConfirmationLinks { html, plain_text }
+    }
+
+    pub async fn test_user(&self) -> (String, String) {
+        let row = sqlx::query!("SELECT username, password FROM users LIMIT 1")
+            .fetch_one(&self.db_pool)
+            .await
+            .expect("Failed to create test users.");
+        (row.username, row.password)
     }
 }
 
@@ -105,12 +123,15 @@ pub async fn spawn_app() -> TestApp {
     let address = format!("http://127.0.0.1:{}", application.port());
     let application_port = application.port();
     let _ = tokio::spawn(application.run_until_stopped());
-    TestApp {
+    let test_app = TestApp {
         address,
         port: application_port,
         db_pool: get_connection_pool(&configuration.database),
         email_server,
-    }
+    };
+
+    add_test_user(&test_app.db_pool).await;
+    test_app
 }
 
 pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
@@ -131,4 +152,16 @@ pub async fn configure_database(config: &DatabaseSettings) -> PgPool {
         .expect("Failed to migrate the database");
 
     connection_pool
+}
+
+async fn add_test_user(pool: &PgPool) {
+    sqlx::query!(
+        "INSERT INTO users (user_id, username, password) VALUES ($1, $2, $3)",
+        Uuid::new_v4(),
+        Uuid::new_v4().to_string(),
+        Uuid::new_v4().to_string()
+    )
+    .execute(pool)
+    .await
+    .expect("Failed to create test users.");
 }
