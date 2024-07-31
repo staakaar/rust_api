@@ -3,10 +3,13 @@ use crate::email_client::EmailClient;
 // use crate::routes::health_check;
 use crate::configuration::DatabaseSettings;
 use crate::routes::{confirm, home, login, login_form, publish_newsletter, subscribe};
+use actix_web::cookie::Key;
 use actix_web::dev::Server;
 use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
-use secrecy::Secret;
+use actix_web_flash_messages::storage::CookieMessageStore;
+use actix_web_flash_messages::FlashMessagesFramework;
+use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::net::TcpListener;
@@ -73,9 +76,14 @@ pub fn run(
 ) -> Result<Server, std::io::Error> {
     let db_pool = Data::new(db_pool);
     let email_client = Data::new(email_client);
+    let message_store =
+        CookieMessageStore::builder(Key::from(hmac_secret.expose_secret().as_bytes())).build();
+    let message_framework = FlashMessagesFramework::builder(message_store).build();
     let server = HttpServer::new(move || {
         App::new()
             // .wrap(Logger::default())
+            .wrap(TracingLogger::default())
+            .wrap(message_framework.clone())
             .wrap(TracingLogger::default())
             // .route("/health_check", web::get().to(health_check))
             .route("/login", web::get().to(login_form))

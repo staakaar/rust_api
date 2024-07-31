@@ -3,6 +3,7 @@ use actix_web::error::InternalError;
 use actix_web::http::header::{ContentType, LOCATION};
 use actix_web::http::StatusCode;
 use actix_web::{web, HttpResponse, ResponseError};
+use actix_web_flash_messages::FlashMessage;
 use hmac::{Hmac, Mac};
 use secrecy::ExposeSecret;
 use secrecy::Secret;
@@ -50,6 +51,7 @@ pub async fn login(
                 AuthError::InvalidCredentials(_) => LoginError::AuthError(e.into()),
                 AuthError::UnexpectedError(_) => LoginError::UnexpectedError(e.into()),
             };
+            FlashMessage::error(e.to_string()).send();
             // let query_string = format!("error={}", urlencoding::Encoded::new(e.to_string()));
 
             // let hmac_tag = {
