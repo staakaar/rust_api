@@ -34,8 +34,8 @@ pub struct TestApp {
     pub port: u16,
     pub db_pool: PgPool,
     pub email_server: MockServer,
-    test_user: TestUser,
-    api_client: reqwest::Client,
+    pub test_user: TestUser,
+    pub api_client: reqwest::Client,
 }
 
 pub struct TestUser {
@@ -145,6 +145,17 @@ impl TestApp {
         let plain_text = get_link(&body["TextBody"].as_str().unwrap());
 
         ConfirmationLinks { html, plain_text }
+    }
+
+    pub async fn get_admin_dashboard_html(&self) -> String {
+        self.api_client
+            .get(&format!("{}/admin/dashboard", &self.address))
+            .send()
+            .await
+            .expect("Dailed to execute request.")
+            .text()
+            .await
+            .unwrap()
     }
 
     pub async fn test_user(&self) -> (String, String) {

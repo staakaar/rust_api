@@ -5,7 +5,7 @@ use rust_api::{configuration::get_configuration, telemetry::get_subscriber};
 use tracing_log::LogTracer;
 
 #[tokio::main]
-async fn main() -> Result<(), std::io::Error> {
+async fn main() -> anyhow::Result<()> {
     // Logging
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     LogTracer::init().expect("Failed to set logger");

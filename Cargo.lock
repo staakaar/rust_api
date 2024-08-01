@@ -122,6 +122,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-session"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43da8b818ae1f11049a4d218975345fe8e56ce5a5f92c11f972abcff5ff80e87"
+dependencies = [
+ "actix-service",
+ "actix-utils",
+ "actix-web",
+ "anyhow",
+ "async-trait",
+ "derive_more",
+ "rand 0.8.5",
+ "redis",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "actix-utils"
 version = "3.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -324,6 +343,12 @@ name = "anyhow"
 version = "1.0.86"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
+
+[[package]]
+name = "arc-swap"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
 
 [[package]]
 name = "argon2"
@@ -582,6 +607,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6995bbe186456c36307f8ea36be3eefe42f49d106896414e18efc4fb2f846b5"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "combine"
+version = "4.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba5a308b75df32fe02788e748662718f03fde005016435c444eea572398219fd"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "memchr",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
@@ -2187,6 +2226,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "redis"
+version = "0.21.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "152f3863635cbb76b73bc247845781098302c6c9ad2060e1a9a7de56840346b6"
+dependencies = [
+ "arc-swap",
+ "async-trait",
+ "bytes",
+ "combine",
+ "futures",
+ "futures-util",
+ "itoa",
+ "native-tls",
+ "percent-encoding",
+ "pin-project-lite",
+ "ryu",
+ "tokio",
+ "tokio-native-tls",
+ "tokio-util",
+ "url",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2366,6 +2428,7 @@ dependencies = [
 name = "rust_api"
 version = "0.1.0"
 dependencies = [
+ "actix-session",
  "actix-web",
  "actix-web-flash-messages",
  "anyhow",
