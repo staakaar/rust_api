@@ -2,6 +2,8 @@ use crate::configuration::DatabaseSettings;
 use crate::configuration::Settings;
 use crate::email_client::EmailClient;
 use crate::routes::admin_dashboard;
+use crate::routes::change_password;
+use crate::routes::change_password_from;
 use crate::routes::{confirm, home, login, login_form, publish_newsletter, subscribe};
 use actix_session::storage::RedisSessionStore;
 use actix_session::SessionMiddleware;
@@ -101,6 +103,8 @@ pub fn run(
             .route("/subscriptions/confirm", web::get().to(confirm))
             .route("/newsletters", web::post().to(publish_newsletter))
             .route("/admin/dashboard", web::get().to(admin_dashboard))
+            .route("/admin/password", web::get().to(change_password_from))
+            .route("/admin/password", web::post().to(change_password))
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(Data::new(HmacSecret(hmac_secret.clone())))

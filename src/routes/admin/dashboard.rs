@@ -1,18 +1,10 @@
-use actix_session::Session;
 use actix_web::{http::header::ContentType, web, HttpResponse};
 use anyhow::Context;
+use reqwest::header::LOCATION;
 use sqlx::PgPool;
-use tracing_subscriber::fmt::format;
 use uuid::Uuid;
 
-use crate::session_state::TypedSession;
-
-fn e500<T>(e: T) -> actix_web::Error
-where
-    T: std::fmt::Debug + std::fmt::Display + 'static,
-{
-    actix_web::error::ErrorInternalServerError(e)
-}
+use crate::{session_state::TypedSession, utils::e500};
 
 pub async fn admin_dashboard(
     session: TypedSession,
@@ -21,7 +13,9 @@ pub async fn admin_dashboard(
     let username = if let Some(user_id) = session.get_user_id().map_err(e500)? {
         get_username(user_id, &pool).await.map_err(e500)?
     } else {
-        todo!()
+        return Ok(HttpResponse::SeeOther()
+            .insert_header((LOCATION, "/login"))
+            .finish());
     };
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
@@ -33,6 +27,10 @@ pub async fn admin_dashboard(
                 <title>Admin dashboard</title>
             <body>
                 <p>Welcome {username}!</p>
+                <p>Avaliable actions:</p>
+                <ol>
+                    <li><a href="/admin/password">Change password</a></li>
+                </ol>
             </body>
             </html>
         "#,
