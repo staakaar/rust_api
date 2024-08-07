@@ -1,10 +1,12 @@
-use crate::authentication::{validate_credentials, AuthError, Credentials};
+use crate::authentication::{validate_credentials, AuthError, Credentials, UserId};
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
+use crate::idempotency::{get_saved_response, IdempotencyKey};
 use crate::routes::error_chain_fmt;
-use crate::utils::{e500, see_other};
+use crate::utils::{e400, e500, see_other};
 use actix_web::http::header::HeaderMap;
 use actix_web::http::StatusCode;
+use actix_web::web::ReqData;
 use actix_web::{web, HttpRequest, HttpResponse, ResponseError};
 use actix_web_flash_messages::FlashMessage;
 use anyhow::Context;
@@ -81,31 +83,43 @@ pub async fn publish_newsletter(
     pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     request: HttpRequest,
+    user_id: ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let credentials = basic_authentication(request.headers()).map_err(PublishError::AuthError)?;
     tracing::Span::current().record("username", &tracing::field::display(&credentials.username));
-    let user_id = validate_credentials(credentials, &pool)
+    // let user_id = validate_credentials(credentials, &pool)
+    //     .await
+    //     .map_err(|e| match e {
+    //         AuthError::InvalidCredentials(_) => PublishError::AuthError(e.into()),
+    //         AuthError::UnexpectedError(_) => PublishError::UnexpectedError(e.into()),
+    //     })?;
+    // tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
+
+    let user_id = user_id.into_inner();
+    let FormData {
+        title,
+        text_content,
+        html_content,
+        idempotency_key,
+    } = form.0;
+    let idempotency_key: IdempotencyKey = idempotency_key.try_into().map_err(e400)?;
+    if let Some(saved_response) = get_saved_response(&pool, &idempotency_key, *user_id)
         .await
-        .map_err(|e| match e {
-            AuthError::InvalidCredentials(_) => PublishError::AuthError(e.into()),
-            AuthError::UnexpectedError(_) => PublishError::UnexpectedError(e.into()),
-        })?;
-    tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
+        .map_err(e500)?
+    {
+        FlashMessage::info("Te newsletter issue has been published!");
+        return Ok(saved_response);
+    }
 
     let subscribers = get_confirmed_subscribers(&pool).await.map_err(e500)?;
     for subscriber in subscribers {
         match subscriber {
             Ok(subscriber) => {
                 email_client
-                    .send_email(
-                        subscriber.email,
-                        &form.title,
-                        &form.html_content,
-                        &form.text_content,
-                    )
+                    .send_email(subscriber.email, &title, &html_content, &text_content)
                     .await
                     .with_context(|| {
-                        format!("Failed to send newsletter issue to {}", subscriber.email)
+                        format!("Failed to send newsletter issue to {}", &subscriber.email)
                     })
                     .map_err(e500)?;
             }
