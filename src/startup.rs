@@ -1,9 +1,11 @@
+use crate::authentication::reject_anonymos_users;
 use crate::configuration::DatabaseSettings;
 use crate::configuration::Settings;
 use crate::email_client::EmailClient;
 use crate::routes::admin_dashboard;
 use crate::routes::change_password;
 use crate::routes::change_password_from;
+use crate::routes::log_out;
 use crate::routes::{confirm, home, login, login_form, publish_newsletter, subscribe};
 use actix_session::storage::RedisSessionStore;
 use actix_session::SessionMiddleware;
@@ -13,6 +15,7 @@ use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
 use actix_web_flash_messages::storage::CookieMessageStore;
 use actix_web_flash_messages::FlashMessagesFramework;
+use actix_web_lab::middleware::from_fn;
 use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
@@ -102,9 +105,14 @@ pub fn run(
             .route("/subscriptions", web::get().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))
             .route("/newsletters", web::post().to(publish_newsletter))
-            .route("/admin/dashboard", web::get().to(admin_dashboard))
-            .route("/admin/password", web::get().to(change_password_from))
-            .route("/admin/password", web::post().to(change_password))
+            .service(
+                web::scope("/admin")
+                    .wrap(from_fn(reject_anonymos_users))
+                    .route("/admin/dashboard", web::get().to(admin_dashboard))
+                    .route("/admin/password", web::get().to(change_password_from))
+                    .route("/admin/password", web::post().to(change_password))
+                    .route("/admin/logout", web::post().to(log_out)),
+            )
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(Data::new(HmacSecret(hmac_secret.clone())))
