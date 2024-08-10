@@ -1,7 +1,9 @@
-use crate::authentication::{validate_credentials, AuthError, Credentials, UserId};
+use crate::authentication::{Credentials, UserId};
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
-use crate::idempotency::{get_saved_response, save_response, IdempotencyKey};
+use crate::idempotency::{
+    get_saved_response, save_response, try_processing, IdempotencyKey, NextAction,
+};
 use crate::routes::error_chain_fmt;
 use crate::utils::{e400, e500, see_other};
 use actix_web::http::header::HeaderMap;
@@ -129,8 +131,19 @@ pub async fn publish_newsletter(
         }
     }
     FlashMessage::info("The newsletter issue has been published!").send();
+
+    let transaction = match try_processing(&pool, &idempotency_key, *user_id)
+        .await
+        .map_err(e500)?
+    {
+        NextAction::StartProcessing(t) => t,
+        NextAction::ReturnSavedResponse(saved_response) => {
+            success_message().send();
+            return Ok(saved_response);
+        }
+    };
     let response = see_other("/admin/newsletters");
-    let response = save_response(&pool, &idempotency_key, *user_id, response)
+    let response = save_response(&pool, &idempotency_key, *user_id, response, transaction)
         .await
         .map_err(e500)?;
     Ok(response)
@@ -196,4 +209,8 @@ fn basic_authentication(headers: &HeaderMap) -> Result<Credentials, anyhow::Erro
         username,
         password: Secret::new(password),
     })
+}
+
+fn success_message() -> FlashMessage {
+    FlashMessage::info("The newsletter issue has been published!")
 }
