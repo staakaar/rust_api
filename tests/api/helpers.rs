@@ -3,6 +3,7 @@ use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version};
 use fake::faker::internet::raw::Password;
 use once_cell::sync::Lazy;
 use rust_api::configuration::{self, get_configuration, DatabaseSettings};
+use rust_api::email_client::EmailClient;
 use rust_api::startup::{get_connection_pool, Application};
 use rust_api::telemetry::{get_subscriber, init_subscriber};
 use sha3::Digest;
@@ -36,6 +37,7 @@ pub struct TestApp {
     pub email_server: MockServer,
     pub test_user: TestUser,
     pub api_client: reqwest::Client,
+    pub email_client: EmailClient,
 }
 
 pub struct TestUser {
@@ -200,6 +202,18 @@ impl TestApp {
             .expect("Failed to create test users.");
         (row.username, row.password)
     }
+
+    pub async fn dispatch_all_pending_emails(&self) {
+        loop {
+            if let ExecutionOutcome::EmptyQueue =
+                try_execute_task(&self.db_pool, &self.email_client)
+                    .await
+                    .unwrap()
+            {
+                break;
+            }
+        }
+    }
 }
 
 pub async fn spawn_app() -> TestApp {
@@ -255,6 +269,7 @@ pub async fn spawn_app() -> TestApp {
         email_server,
         test_user: TestUser::generate(),
         api_client: client,
+        email_client: configuration.email_client.client(),
     };
 
     test_app.test_user.store(&test_app.db_pool).await;
